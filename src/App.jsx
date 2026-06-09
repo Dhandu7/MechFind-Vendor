@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useContext, createContext, useEffect } from 'react'
 import './App.css'
 import { vendor, services, slots, bookings } from './data.js'
+
+/* ── Theme context ── */
+const ThemeCtx = createContext({ dark: true, toggle: () => {} })
 
 const statusLabel = { requested: 'Pending', accepted: 'Accepted', inProgress: 'In Progress', done: 'Completed', rejected: 'Rejected' }
 
@@ -66,6 +69,15 @@ function BottomNav({ page, setPage }) {
   )
 }
 
+function ThemeToggle() {
+  const { dark, toggle } = useContext(ThemeCtx)
+  return (
+    <button onClick={toggle} className="btn btn-ghost btn-sm theme-toggle" title={dark ? 'Switch to light mode' : 'Switch to dark mode'} style={{ fontSize: 16, padding: '6px 9px', lineHeight: 1 }}>
+      {dark ? '☀️' : '🌙'}
+    </button>
+  )
+}
+
 function Topbar({ title, subtitle, onMenu, children }) {
   return (
     <div className="topbar">
@@ -78,6 +90,7 @@ function Topbar({ title, subtitle, onMenu, children }) {
       </div>
       <div className="topbar-actions">
         {children}
+        <ThemeToggle />
         <div className="notif-btn">
           <button className="btn btn-ghost btn-sm" style={{ fontSize: 18, padding: '6px 8px' }}>🔔</button>
           <div className="notification-dot" />
@@ -572,8 +585,20 @@ export default function App() {
   const [authed, setAuthed] = useState(false)
   const [page, setPage] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [dark, setDark] = useState(() => localStorage.getItem('mf-vendor-theme') !== 'light')
 
-  if (!authed) return <Login onLogin={() => setAuthed(true)} />
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+    localStorage.setItem('mf-vendor-theme', dark ? 'dark' : 'light')
+  }, [dark])
+
+  const toggle = () => setDark(d => !d)
+
+  if (!authed) return (
+    <ThemeCtx.Provider value={{ dark, toggle }}>
+      <Login onLogin={() => setAuthed(true)} />
+    </ThemeCtx.Provider>
+  )
 
   const onMenu = () => setSidebarOpen(o => !o)
   const onClose = () => setSidebarOpen(false)
@@ -588,10 +613,12 @@ export default function App() {
   }
 
   return (
-    <div className="layout">
-      <Sidebar page={page} setPage={setPage} open={sidebarOpen} onClose={onClose} />
-      <main className="main">{pages[page]}</main>
-      <BottomNav page={page} setPage={p => { setPage(p); onClose() }} />
-    </div>
+    <ThemeCtx.Provider value={{ dark, toggle }}>
+      <div className="layout">
+        <Sidebar page={page} setPage={setPage} open={sidebarOpen} onClose={onClose} />
+        <main className="main">{pages[page]}</main>
+        <BottomNav page={page} setPage={p => { setPage(p); onClose() }} />
+      </div>
+    </ThemeCtx.Provider>
   )
 }
